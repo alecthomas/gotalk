@@ -192,10 +192,19 @@ func valToErr(r reflect.Value) error {
 }
 
 
+// If a request or response is of type RawPayload pass it through directly.
+type RawPayload []byte
+var rawPayloadType = reflect.TypeOf(RawPayload{})
+
+
 func decodeResult(r []reflect.Value) ([]byte, error) {
   if len(r) == 2 {
     if r[1].IsNil() {
-      return json.Marshal(r[0].Interface())
+      i := r[0].Interface()
+      if p, ok := i.(RawPayload); ok {
+        return p, nil
+      }
+      return json.Marshal(i)
     } else {
       return nil, valToErr(r[1])
     }
@@ -208,10 +217,15 @@ func decodeResult(r []reflect.Value) ([]byte, error) {
 
 
 func decodeParams(paramsType reflect.Type, inbuf []byte) (*reflect.Value, error) {
-  paramsVal := reflect.New(paramsType)
-  params := paramsVal.Interface()
-  if err := json.Unmarshal(inbuf, &params); err != nil {
-    return &paramsVal, errUnexpectedParamType
+  var paramsVal reflect.Value
+  if paramsType == rawPayloadType {
+    paramsVal = reflect.ValueOf(&inbuf)
+  } else {
+    paramsVal = reflect.New(paramsType)
+    params := paramsVal.Interface()
+    if err := json.Unmarshal(inbuf, &params); err != nil {
+      return &paramsVal, errUnexpectedParamType
+    }
   }
   return &paramsVal, nil
 }

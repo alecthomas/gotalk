@@ -81,6 +81,12 @@ func TestRequestFuncHandlers(t *testing.T) {
     invocationCount++
     return nil
   })
+  h.Handle("k", func(req RawPayload) (RawPayload, error) {
+    if bytes.Compare(req, []byte("bytesin")) != 0 {
+      t.Errorf("expected op='bytesin' but got '%s'", req)
+    }
+    return RawPayload("bytesout"), nil
+  })
   h.Handle("", func(s *Sock, op string, p int) error {
     if op != "fallback1" && op != "fallback2" {
       t.Errorf("expected op='fallback1'||'fallback2' but got '%s'", op)
@@ -101,6 +107,7 @@ func TestRequestFuncHandlers(t *testing.T) {
   checkReqHandler(t,s,h, "h", "1", "")
   checkReqHandler(t,s,h, "i", "", "")
   checkReqHandler(t,s,h, "j", "", "")
+  checkReqHandler(t,s,h, "k", "bytesin", "bytesout")
   checkReqHandler(t,s,h, "fallback1", "1", "")
   checkReqHandler(t,s,h, "fallback2", "1", "")
 
